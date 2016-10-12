@@ -67,7 +67,7 @@ def manual_start(request):
     req_token_url = 'https://api.twitter.com/oauth/request_token'
     req_token_method = 'POST'
     redirect_uri = 'http://rsoi.local/oauth/complete/?redirect_state={}'.format(state)
-    auth = OAuth1(key, secret, callback_uri=redirect_uri, decoding=None)
+    auth = OAuth1(key, secret, callback_uri=redirect_uri)
 
     response = requests.request(req_token_method, req_token_url, headers={}, params={}, auth=auth, timeout=None)
     response.raise_for_status()
@@ -126,7 +126,7 @@ def manual_complete(request):
 
     redirect_uri = 'http://rsoi.local/oauth/complete/?redirect_state={}'.format(state)
     auth = OAuth1(key, secret, resource_owner_key=resource_owner_key, resource_owner_secret=resource_owner_secret,
-                  callback_uri=redirect_uri, verifier=oauth_verifier, decoding=None)
+                  callback_uri=redirect_uri, verifier=oauth_verifier)
 
     access_method = 'POST'
     access_url = 'https://api.twitter.com/oauth/access_token'
@@ -145,7 +145,7 @@ def manual_complete(request):
     user_url = 'https://api.twitter.com/1.1/account/verify_credentials.json'
     params = {'include_email': 'true'}
     auth = OAuth1(key, secret, resource_owner_key=resource_owner_key, resource_owner_secret=resource_owner_secret,
-                  callback_uri=redirect_uri, decoding=None)
+                  callback_uri=redirect_uri)
 
     response = requests.request(user_method, user_url, params=params, auth=auth)
     response.raise_for_status()
