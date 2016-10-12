@@ -1,0 +1,14 @@
+{% extends 'lr1_oauth/base.html' %}
+
+{% block content %}
+    <div class="auth">
+        <h3>Авторизоваться через Twitter (OAuth 1a)</h3>
+        <div class="auth__btn">
+            <a href="{% url 'social:begin' backend='twitter' %}">Старт</a>
+        </div>
+        <hr>
+        <div class="manual__btn">
+            <a href="{% url 'oauth:manual' %}">Вручную</a>
+        </div>
+    </div>
+{% endblock %}

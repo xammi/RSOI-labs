@@ -1,0 +1,36 @@
+{% extends 'lr1_oauth/base.html' %}
+{% load static %}
+
+{% block js %}
+    <script src="{% static 'libs/jquery-3.1.1.min.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="success">
+        <h3>Вы успешно зарегистрированы</h3>
+        {% with user=request.user %}
+            <ul>
+                <li><b>Имя</b>: {{ user.first_name }}</li>
+                <li><b>Фамилия</b>: {{ user.last_name }}</li>
+                <li><b>Email</b>: {{ user.email }}</li>
+                <li><b>Nick</b>: {{ user.username }}</li>
+                <li><b>Дата регистрации</b>: {{ user.date_joined }}</li>
+                <li><b>Последний вход</b>: {{ user.last_login }}</li>
+            </ul>
+        {% endwith %}
+        <a id="js-tweet" href="{% url 'oauth:get_tweet' backend='twitter' %}">Tweet</a>
+        <br>
+        <span id="tweet"></span>
+    </div>
+    <script>
+        $('#js-tweet').click(function (event) {
+            event.preventDefault();
+            var url = $(this).attr('href');
+            $.get(url).done(function (response) {
+                $('#tweet').html(JSON.stringify(response));
+            }).fail(function (xhr, textStatus) {
+                console.log('error');
+            });
+        });
+    </script>
+{% endblock %}

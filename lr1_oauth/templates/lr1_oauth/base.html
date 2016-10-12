@@ -1,0 +1,17 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}LR1 Oauth{% endblock %}</title>
+
+    {% block css %}{% endblock %}
+    {% block js %}{% endblock %}
+</head>
+<body>
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
