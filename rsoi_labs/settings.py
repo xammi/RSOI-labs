@@ -41,6 +41,7 @@ INSTALLED_APPS = [
 ]
 PROJECT_APPS = [
     'lr1_oauth',
+    'lr2_api',
 ]
 INSTALLED_APPS += PROJECT_APPS
 
@@ -73,6 +74,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'rsoi_labs.wsgi.application'
+
+AUTH_USER_MODEL = 'lr2_api.User'
 
 
 # Database
