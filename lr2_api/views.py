@@ -1,15 +1,75 @@
-from django.http import HttpResponseForbidden
-from django.shortcuts import get_object_or_404
-from django.views.generic import RedirectView
+import hashlib
+from django.http import HttpResponseForbidden, HttpResponseRedirect, HttpResponseBadRequest, Http404
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from django.views.generic import FormView, TemplateView
+from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
 
 from lr2_api.base_views import JsonView, PaginateMixin, LoginRequiredMixin
-from lr2_api.forms import RouteForm
-from lr2_api.models import Location, TravelCompany, Route
+from lr2_api.forms import RouteForm, RegisterForm
+from lr2_api.models import Location, TravelCompany, Route, User
 
 
-class AuthorizeView(RedirectView):
-    def get_redirect_url(self, *args, **kwargs):
-        return ''
+class RegisterView(FormView):
+    http_method_names = ['get', 'post']
+    template_name = 'lr2_api/register_form.html'
+    form_class = RegisterForm
+    model = User
+
+    def get_success_url(self):
+        return reverse('api:authorize')
+    
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.is_active = True
+        user.save()
+        return super(RegisterView, self).form_valid(form)
+
+
+class AuthorizeView(TemplateView):
+    http_method_names = ['get', 'post']
+    template_name = 'lr2_api/auth_form.html'
+    model = User
+
+    @staticmethod
+    def get_user_code(user, **kwargs):
+        enc_id = str(user.id).encode('utf-8')
+        enc_email = str(user.email).encode('utf-8')
+        enc_salt = str(settings.SECRET_KEY[:5]).encode('utf-8')
+        return hashlib.sha1(enc_id + enc_email + enc_salt).hexdigest()
+
+    def get_success_url(self, *args, **kwargs):
+        session = self.request.session
+        client_id = session.get('client_id')
+        response_type = session.get('response_type')
+        if client_id == settings.LR2_CLIENT_KEY and response_type.lower() == 'code':
+            callback = settings.LR2_CALLBACK
+            return callback + '?code=' + self.get_user_code(**kwargs)
+        raise Http404()
+
+    def get(self, request, *args, **kwargs):
+        client_id = request.GET.get('client_id')
+        if client_id:
+            request.session['client_id'] = client_id
+        response_type = request.GET.get('response_type')
+        if response_type:
+            request.session['response_type'] = response_type
+        return super(AuthorizeView, self).get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        if not email or not password:
+            return HttpResponseBadRequest()
+
+        user = authenticate(email=email, password=password)
+        if user:
+            login(self.request, user)
+            return HttpResponseRedirect(self.get_success_url(user=user, **kwargs))
+        else:
+            context = {'error': 'Пользователь не существует'}
+            return render(request, self.template_name, context)
 
 
 class AccessTokenView(JsonView):

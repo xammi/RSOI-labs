@@ -1,9 +1,15 @@
 from django.conf.urls import url
 
 from lr2_api.views import LocationsView, TravelCompaniesView, \
-    PersonalInfoView, MyRoutesView, RouteView, RouteLocationView, RouteRegisterView, AuthorizeView, AccessTokenView
+    PersonalInfoView, MyRoutesView, RouteView, RouteLocationView, RouteRegisterView, \
+    AuthorizeView, AccessTokenView, RegisterView
 
 urlpatterns = [
+    # fakes
+    url(r'^register/',
+        RegisterView.as_view(),
+        name='usual_register'),
+
     # auth
     url(r'^authorize/$',
         AuthorizeView.as_view(),

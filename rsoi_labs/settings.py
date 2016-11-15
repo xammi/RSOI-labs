@@ -129,4 +129,4 @@ LOGIN_ERROR_URL = '/oauth/error/'
 
 LR2_CLIENT_KEY = '1435'
 LR2_CLIENT_SECRET = 'BiuyiuwqIYBI3123'
-LR2_CALLBACK = 'http://127.0.0.1:9012/'
+LR2_CALLBACK = 'http://127.0.0.1:9012/redirect/'

@@ -1,0 +1,11 @@
+{% extends 'lr1_oauth/base.html' %}
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+    <form action="{% url 'api:usual_register' %}" method="post">
+        {% csrf_token %}
+        {{ form }}
+        <button type="submit">Отправить</button>
+    </form>
+    <a href="{% url 'api:authorize' %}">Авторизация</a>
+{% endblock %}
