@@ -1,10 +1,17 @@
 from django.conf.urls import url
 
-from lr2_api.views import IndexView, LocationsView, TravelCompaniesView, \
-    PersonalInfoView, MyRoutesView, RouteView, RouteLocationView, RouteRegisterView
+from lr2_api.views import LocationsView, TravelCompaniesView, \
+    PersonalInfoView, MyRoutesView, RouteView, RouteLocationView, RouteRegisterView, AuthorizeView, AccessTokenView
 
 urlpatterns = [
-    url(r'^$', IndexView.as_view(), name='index'),
+    # auth
+    url(r'^authorize/$',
+        AuthorizeView.as_view(),
+        name='authorize'),
+
+    url(r'^access_token/$',
+        AccessTokenView.as_view(),
+        name='access_token'),
 
     # public
     url(r'^locations/$',

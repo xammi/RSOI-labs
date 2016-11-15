@@ -125,3 +125,8 @@ SOCIAL_AUTH_BACKEND_ERROR_URL = '/oauth/error/'
 LOGIN_URL = '/oauth/'
 LOGIN_REDIRECT_URL = '/oauth/'
 LOGIN_ERROR_URL = '/oauth/error/'
+
+
+LR2_CLIENT_KEY = '1435'
+LR2_CLIENT_SECRET = 'BiuyiuwqIYBI3123'
+LR2_CALLBACK = 'http://127.0.0.1:9012/'
