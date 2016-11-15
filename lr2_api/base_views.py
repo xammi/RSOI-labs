@@ -7,15 +7,24 @@ class JsonView(View):
     def get_json_data(self, **kwargs):
         return {}
 
-    def get(self, request, *args, **kwargs):
-        json_data = self.get_json_data(**kwargs)
+    def prepare_response(self, request, *args, **kwargs):
+        json_data = kwargs.get('json_data', None)
+        if not json_data:
+            json_data = self.get_json_data(**kwargs)
         json_data = json.dumps(json_data, ensure_ascii=False, indent=4)
         return HttpResponse(json_data, content_type='application/json; charset=utf-8')
 
+    def get(self, request, *args, **kwargs):
+        return self.prepare_response(request, *args, **kwargs)
+
     def post(self, request, *args, **kwargs):
-        json_data = self.get_json_data(**kwargs)
-        json_data = json.dumps(json_data, ensure_ascii=False, indent=4)
-        return HttpResponse(json_data, content_type='application/json; charset=utf-8')
+        return self.prepare_response(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        return self.prepare_response(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.prepare_response(request, *args, **kwargs)
 
 
 class PaginateMixin(object):

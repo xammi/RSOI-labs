@@ -11,7 +11,7 @@ urlpatterns = [
         LocationsView.as_view(),
         name='locations'),
 
-    url(r'^travel_companies/$',
+    url(r'^companies/$',
         TravelCompaniesView.as_view(),
         name='travel_companies'),
 

@@ -121,6 +121,9 @@ class TravelCompany(models.Model):
 
 
 class RouteUser(models.Model):
+    class Meta:
+        unique_together = ('route', 'user')
+
     route = models.ForeignKey('Route')
     user = models.ForeignKey('User')
     payed = models.BooleanField(verbose_name='Оплачено?', default=False)
@@ -156,6 +159,6 @@ class Route(models.Model):
             'group': [
                 {'id': user.id, 'name': user.get_full_name()} for user in self.users.filter(is_active=True)
             ],
-            'departure': self.depart_date if self.depart_date else None,
-            'arrival': self.arrive_date if self.arrive_date else None
+            'departure': self.depart_date.isoformat() if self.depart_date else None,
+            'arrival': self.arrive_date.isoformat() if self.arrive_date else None
         }
