@@ -38,6 +38,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(verbose_name='Персонал?', default=False)
     is_active = models.BooleanField(verbose_name='Активен?', default=False)
 
+    code = models.CharField(verbose_name='OAuth2 Code', unique=True, max_length=100)
     access_token = models.CharField(verbose_name='Токен доступа', max_length=100, blank=True, null=True)
     expires_in = models.PositiveIntegerField(verbose_name='Время действия токена', blank=True, null=True)
 
