@@ -140,23 +140,13 @@ class AccessTokenView(JsonView):
         return super(AccessTokenView, self).dispatch(request, *args, **kwargs)
 
     @staticmethod
-    def check_basic_auth(request):
-        auth_string = request.headers.get('HTTP_AUTHORIZATION')
-        if auth_string:
-            splitted = auth_string.split(' ', 1)
-            if len(splitted) == 2:
-                auth_type, auth_param = splitted
-                if auth_type == 'Basic':
-                    return True
-        return False
-
-    @staticmethod
     def get_client(request):
         try:
-            enc = request.encoding
+            enc = request.encoding or 'utf-8'
         except AttributeError:
             enc = 'utf-8'
-        auth_string = request.headers.get('HTTP_AUTHORIZATION')
+        auth_string = request.META.get('HTTP_AUTHORIZATION')
+        auth_string = auth_string.split(' ', 1)[1]
         try:
             b64_dec = base64.b64decode(auth_string)
         except (TypeError, binascii.Error):
@@ -181,7 +171,7 @@ class AccessTokenView(JsonView):
                 rt.delete()
 
         expires = timezone.now() + timedelta(seconds=36000)
-        access_token = AccessToken(app=client_app, user=request.user, token=token['access_token'], expires=expires)
+        access_token = AccessToken(app=client_app, user=request.grant_user, token=token['access_token'], expires=expires)
         access_token.save()
         refresh_token = RefreshToken(token=token['refresh_token'], access_token=access_token)
         refresh_token.save()
@@ -192,14 +182,15 @@ class AccessTokenView(JsonView):
             return HttpResponseBadRequest()
 
         code = request.POST.get('code')
-        if not code or not self.check_basic_auth(request):
+        if not code:
             return HttpResponseBadRequest()
 
         client_app = self.get_client(request)
-        grants = OAuthCode.objects.filter(app=client_app, token=code, expires__gt=timezone.now())
-        if not grants.exists():
+        grant = OAuthCode.objects.filter(app=client_app, token=code, expires__gt=timezone.now()).first()
+        if not grant:
             return HttpResponseForbidden()
 
+        request.grant_user = grant.user
         token = {
             'expires_in': 3600,
             'access_token': generate_token(),

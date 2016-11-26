@@ -8,7 +8,7 @@ server_data = {
     'port': '9011',
     'api_key': 'EftqgfZ8YCxmUSa7tLIm9NZYW3X0hLhzktyUlwHV',
     'api_secret': 'It9aTzpJP9bzS1KLCEyPi8xBsB1WPxHpMxbArCec7tT7ifky5RodBHeiOzJ9lMEv8tkb9Fzs4Zc1zLY5Uqj43OQKVWq15QmN5dPtHxl2wEmlL0ZKPJppAElyfs6cO9Jm',
-    'application_url': 'o2p'
+    'application_url': 'api'
 }
 client_data = {
     'host': '127.0.0.1',
@@ -21,6 +21,7 @@ ACCESS_TOKEN_URL = 'token'
 def get_server_route(route):
     return 'http://{0}:{1}/{2}/{3}/'.format(
         server_data['host'], server_data['port'], server_data['application_url'], route)
+
 
 def get_client_route(route):
     return 'http://{0}:{1}/{2}/'.format(client_data['host'], client_data['port'], route)
