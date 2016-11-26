@@ -2,31 +2,21 @@ from django.conf.urls import url
 
 from lr2_api.views import LocationsView, TravelCompaniesView, \
     PersonalInfoView, MyRoutesView, RouteView, RouteLocationView, RouteRegisterView, \
-    AuthorizeView, AccessTokenView, RegisterView
+    AuthorizeView, AccessTokenView, RegisterView, LoginView, LogoutView
 
 urlpatterns = [
     # fakes
-    url(r'^register/',
-        RegisterView.as_view(),
-        name='usual_register'),
+    url(r'^register/', RegisterView.as_view(), name='usual_register'),
+    url(r'^login/', LoginView.as_view(), name='usual_login'),
+    url(r'^logout/', LogoutView.as_view(), name='usual_logout'),
 
     # auth
-    url(r'^authorize/$',
-        AuthorizeView.as_view(),
-        name='authorize'),
-
-    url(r'^access_token/$',
-        AccessTokenView.as_view(),
-        name='access_token'),
+    url(r'^authorize/$', AuthorizeView.as_view(), name='authorize'),
+    url(r'^token/$', AccessTokenView.as_view(), name='access_token'),
 
     # public
-    url(r'^locations/$',
-        LocationsView.as_view(),
-        name='locations'),
-
-    url(r'^companies/$',
-        TravelCompaniesView.as_view(),
-        name='travel_companies'),
+    url(r'^locations/$', LocationsView.as_view(), name='locations'),
+    url(r'^companies/$', TravelCompaniesView.as_view(), name='travel_companies'),
 
     # by token
     url(r'^me/$',

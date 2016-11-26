@@ -89,7 +89,7 @@ class PaginateMixin(object):
                                               *args, **kwargs)
 
 
-class LoginRequiredMixin(object):
+class OAuthRequiredMixin(object):
     def dispatch(self, request, *args, **kwargs):
         token = request.META.get('Authorization')[7:]
         if not token:
@@ -99,4 +99,4 @@ class LoginRequiredMixin(object):
             return HttpResponseForbidden()
         if user.expires_in < timezone.now():
             return HttpResponse(status=405)
-        return super(LoginRequiredMixin, self).dispatch(request, user=user, *args, **kwargs)
+        return super(OAuthRequiredMixin, self).dispatch(request, user=user, *args, **kwargs)

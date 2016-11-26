@@ -1,18 +1,28 @@
-import hashlib
+import base64
+import random
+import binascii
+from datetime import timedelta
+from urllib.parse import unquote_plus
 
-from django.http import HttpResponseForbidden, HttpResponseRedirect, HttpResponseBadRequest, Http404
-from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponseForbidden, HttpResponseRedirect, HttpResponseBadRequest, HttpResponse
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.views.generic import FormView, TemplateView
-from django.conf import settings
-from django.contrib.auth import authenticate, login
+from django.views.generic import FormView, RedirectView
+from django.contrib.auth import authenticate, login, logout
 from django.utils import timezone
 
-from lr2_api.base_views import JsonView, PaginateMixin, LoginRequiredMixin
-from lr2_api.forms import RouteForm, RegisterForm
-from lr2_api.models import Location, TravelCompany, Route, User
+from lr2_api.base_views import JsonView, PaginateMixin, OAuthRequiredMixin
+from lr2_api.forms import RouteForm, RegisterForm, AuthForm, AllowForm
+from lr2_api.models import Location, TravelCompany, Route, User, Application, OAuthCode, RefreshToken, AccessToken
+
+
+def generate_token(length=30, chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'):
+    rand = random.SystemRandom()
+    return ''.join(rand.choice(chars) for _ in range(length))
 
 
 class RegisterView(FormView):
@@ -23,59 +33,103 @@ class RegisterView(FormView):
 
     def get_success_url(self):
         return reverse('api:authorize')
-
-    @staticmethod
-    def get_user_code(user, **kwargs):
-        enc_email = str(user.email).encode('utf-8')
-        enc_salt = str(settings.SECRET_KEY[:5]).encode('utf-8')
-        return hashlib.sha1(enc_email + enc_salt).hexdigest()
     
     def form_valid(self, form):
         user = form.save(commit=False)
         user.is_active = True
-        user.code = self.get_user_code(user)[:100]
         user.save()
         return super(RegisterView, self).form_valid(form)
 
 
-class AuthorizeView(TemplateView):
+class LoginView(FormView):
     http_method_names = ['get', 'post']
     template_name = 'lr2_api/auth_form.html'
+    form_class = AuthForm
     model = User
 
-    def get_success_url(self, user, *args, **kwargs):
-        client_id = kwargs.get('client_id')
-        if client_id == settings.LR2_CLIENT_KEY:
-            callback = settings.LR2_CALLBACK
-            return callback + '?code=' + user.code
-        raise Http404()
+    def get_context_data(self, **kwargs):
+        context = super(LoginView, self).get_context_data(**kwargs)
+        context['next_goal'] = self.request.GET.get('next')
+        return context
+
+    def post(self, request, *args, **kwargs):
+        req_data = self.request.POST
+        form = self.get_form(self.get_form_class())
+        self.redirect_uri = req_data.get('next')
+
+        email, password = req_data.get('email'), req_data.get('password')
+        if not email or not password:
+            form.add_error('email', 'Заполни данные')
+            return super(LoginView, self).form_invalid(form)
+
+        user = authenticate(email=email, password=password)
+        if not user:
+            form.add_error('email', 'Неверная пара email-пароль')
+            return super(LoginView, self).form_invalid(form)
+
+        login(self.request, user)
+        return HttpResponseRedirect(self.redirect_uri)
+
+
+class LogoutView(RedirectView):
+    pattern_name = 'api:usual_login'
+
+    def get(self, request, *args, **kwargs):
+        logout(request)
+        return super(LogoutView, self).get(request, *args, **kwargs)
+
+
+class AuthorizeView(LoginRequiredMixin, FormView):
+    http_method_names = ['get', 'post']
+    template_name = 'lr2_api/allow_form.html'
+    form_class = AllowForm
+
+    client_app = None
 
     def get(self, request, *args, **kwargs):
         client_id = request.GET.get('client_id')
         response_type = request.GET.get('response_type')
         if not client_id or response_type.lower() != 'code':
             return HttpResponseBadRequest()
-        return super(AuthorizeView, self).get(request, client_id=client_id, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
-        context = super(AuthorizeView, self).get_context_data(**kwargs)
-        context['client_id'] = kwargs.get('client_id')
-        return context
-
-    def post(self, request, *args, **kwargs):
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        client_id = request.POST.get('client_id')
-        if not email or not password or not client_id:
+        client_app = Application.objects.filter(client_id=client_id).first()
+        if not client_app:
             return HttpResponseBadRequest()
 
-        user = authenticate(email=email, password=password)
-        if user:
-            login(self.request, user)
-            return HttpResponseRedirect(self.get_success_url(user=user, client_id=client_id, **kwargs))
-        else:
-            context = {'error': 'Пользователь не существует'}
-            return render(request, self.template_name, context)
+        past_codes = OAuthCode.objects.filter(user=request.user, app=client_app, expires__gt=timezone.now())
+        if past_codes.exists():
+            back_uri = self.create_code(client_app)
+            return HttpResponseRedirect(back_uri)
+
+        self.client_app = client_app
+        return super(AuthorizeView, self).get(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super(AuthorizeView, self).get_form_kwargs()
+        if 'data' not in kwargs:
+            kwargs['data'] = {
+                'client_id': self.client_app.client_id,
+                'redirect_uri': self.client_app.redirect_uri,
+                'response_type': 'code',
+            }
+        return kwargs
+
+    def create_code(self, client_app):
+        token = generate_token()
+        expires = timezone.now() + timedelta(seconds=60)
+        grant = OAuthCode(user=self.request.user, app=client_app, token=token, expires=expires)
+        grant.save()
+        return '{0}?code={1}'.format(client_app.redirect_uri, grant.token)
+
+    def form_valid(self, form):
+        allow = form.cleaned_data.get('allow')
+        client_id = form.cleaned_data.get('client_id')
+        client_app = Application.objects.filter(client_id=client_id).first()
+        if not client_app:
+            return HttpResponseBadRequest()
+
+        back_uri = self.create_code(client_app) if allow else reverse('api:usual_login')
+        return HttpResponseRedirect(back_uri)
 
 
 class AccessTokenView(JsonView):
@@ -85,48 +139,84 @@ class AccessTokenView(JsonView):
     def dispatch(self, request, *args, **kwargs):
         return super(AccessTokenView, self).dispatch(request, *args, **kwargs)
 
+    @staticmethod
+    def check_basic_auth(request):
+        auth_string = request.headers.get('HTTP_AUTHORIZATION')
+        if auth_string:
+            splitted = auth_string.split(' ', 1)
+            if len(splitted) == 2:
+                auth_type, auth_param = splitted
+                if auth_type == 'Basic':
+                    return True
+        return False
+
+    @staticmethod
+    def get_client(request):
+        try:
+            enc = request.encoding
+        except AttributeError:
+            enc = 'utf-8'
+        auth_string = request.headers.get('HTTP_AUTHORIZATION')
+        try:
+            b64_dec = base64.b64decode(auth_string)
+        except (TypeError, binascii.Error):
+            return None
+        try:
+            auth_decoded = b64_dec.decode(enc)
+        except UnicodeDecodeError:
+            return None
+        client_id, client_secret = map(unquote_plus, auth_decoded.split(':', 1))
+        client_app = Application.objects.filter(client_id=client_id).first()
+        if client_app and client_app.client_secret == client_secret:
+            return client_app
+        return None
+
+    def save_token(self, token, request, client_app):
+        refresh_token = request.POST.get('refresh_token')
+        if refresh_token:
+            # revoke old token
+            rt = RefreshToken.objects.filter(token=refresh_token).first()
+            if rt:
+                rt.access_token.delete()
+                rt.delete()
+
+        expires = timezone.now() + timedelta(seconds=36000)
+        access_token = AccessToken(app=client_app, user=request.user, token=token['access_token'], expires=expires)
+        access_token.save()
+        refresh_token = RefreshToken(token=token['refresh_token'], access_token=access_token)
+        refresh_token.save()
+
     def post(self, request, *args, **kwargs):
         grant_type = request.POST.get('grant_type')
         if grant_type.lower() != 'authorization_code':
             return HttpResponseBadRequest()
 
         code = request.POST.get('code')
-        if not code:
+        if not code or not self.check_basic_auth(request):
+            return HttpResponseBadRequest()
+
+        client_app = self.get_client(request)
+        grants = OAuthCode.objects.filter(app=client_app, token=code, expires__gt=timezone.now())
+        if not grants.exists():
             return HttpResponseForbidden()
-        return super(AccessTokenView, self).post(request, code=code, *args, **kwargs)
 
-    @staticmethod
-    def get_access_token(code):
-        enc_code = str(code).encode('utf-8')
-        enc_salt = str(settings.SECRET_KEY[5:10]).encode('utf-8')
-        return hashlib.sha1(enc_code + enc_salt).hexdigest()
-    
-    @staticmethod
-    def get_expires(code, access_token):
-        timestamp = timezone.now() + timezone.timedelta(minutes=3)
-        return int(timestamp.strftime('%s'))
+        token = {
+            'expires_in': 3600,
+            'access_token': generate_token(),
+            'refresh_token': generate_token(),
+            'token_type': 'Bearer',
+        }
+        self.save_token(token, request, client_app)
+        try:
+            OAuthCode.objects.filter(token=code, app=client_app).delete()
+        except Exception:
+            pass
+        return super(AccessTokenView, self).post(request, token=token, *args, **kwargs)
 
-    @staticmethod
-    def get_refresh_token(access_token, expires):
-        enc_acct = str(access_token).encode('utf-8')
-        enc_exp = str(expires).encode('utf-8')
-        enc_salt = str(settings.SECRET_KEY[10:15]).encode('utf-8')
-        return hashlib.sha1(enc_acct + enc_exp + enc_salt).hexdigest()
-
-    def get_json_data(self, code, **kwargs):
-        json_data = super(AccessTokenView, self).get_json_data(**kwargs)
-        access_token = self.get_access_token(code)
-        expires = self.get_expires(code, access_token)
-        refresh_token = self.get_refresh_token(access_token, expires)
-
-        User.objects.filter(code=code).update(access_token=access_token, expires_in=expires)
-
-        json_data.update({
-            'access_token': access_token,
-            'expires': expires,
-            'refresh_token': refresh_token,
-        })
-        return json_data
+    def get_json_data(self, token, **kwargs):
+        json = super(AccessTokenView, self).get_json_data(**kwargs)
+        json.update(token)
+        return json
 
 
 class LocationsView(PaginateMixin, JsonView):
@@ -141,14 +231,14 @@ class TravelCompaniesView(PaginateMixin, JsonView):
     data_key = 'companies'
 
 
-class PersonalInfoView(LoginRequiredMixin, JsonView):
+class PersonalInfoView(OAuthRequiredMixin, JsonView):
     http_method_names = ['get']
 
     def get_json_data(self, user, **kwargs):
         return user.as_dict()
 
 
-class MyRoutesView(LoginRequiredMixin, PaginateMixin, JsonView):
+class MyRoutesView(OAuthRequiredMixin, PaginateMixin, JsonView):
     http_method_names = ['get']
     data_key = 'routes'
 
@@ -156,7 +246,7 @@ class MyRoutesView(LoginRequiredMixin, PaginateMixin, JsonView):
         return user.route_set.all()
 
 
-class RouteView(LoginRequiredMixin, JsonView):
+class RouteView(OAuthRequiredMixin, JsonView):
     http_method_names = ['get', 'post', 'patch']
     form_class = RouteForm
 
@@ -194,7 +284,7 @@ class RouteView(LoginRequiredMixin, JsonView):
         return self.prepare_response(request, json_data, *args, **kwargs)
 
 
-class RouteLocationView(LoginRequiredMixin, JsonView):
+class RouteLocationView(OAuthRequiredMixin, JsonView):
     http_method_names = ['post', 'delete']
 
     def dispatch(self, request, *args, **kwargs):
@@ -219,7 +309,7 @@ class RouteLocationView(LoginRequiredMixin, JsonView):
         return {'status': 'OK'}
 
 
-class RouteRegisterView(LoginRequiredMixin, JsonView):
+class RouteRegisterView(OAuthRequiredMixin, JsonView):
     http_method_names = ['post']
 
     def post(self, request, *args, **kwargs):

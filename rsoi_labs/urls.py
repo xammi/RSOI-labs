@@ -7,4 +7,5 @@ urlpatterns = [
 
     url(r'^oauth/', include('lr1_oauth.urls', namespace='oauth')),
     url(r'^api/', include('lr2_api.urls', namespace='api')),
+    url(r'^o2p/', include('oauth2_provider.urls', namespace='oauth2_provider')),
 ]

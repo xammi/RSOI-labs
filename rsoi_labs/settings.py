@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'social.apps.django_app.default',
+    'oauth2_provider',
 ]
 PROJECT_APPS = [
     'lr1_oauth',
@@ -92,9 +93,9 @@ DATABASES = {
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
@@ -122,11 +123,6 @@ SOCIAL_AUTH_TWITTER_SECRET = 'iXsvD9Nu52mjLcNnRXGkVWt1p5VTBDaKEJRGH9qtdsxXtWoGMC
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/oauth/success/'
 SOCIAL_AUTH_BACKEND_ERROR_URL = '/oauth/error/'
 
-LOGIN_URL = '/oauth/'
-LOGIN_REDIRECT_URL = '/oauth/'
+LOGIN_URL = '/api/login/'  # '/oauth/'
+LOGIN_REDIRECT_URL = '/api/login/'  # '/oauth/'
 LOGIN_ERROR_URL = '/oauth/error/'
-
-
-LR2_CLIENT_KEY = '1435'
-LR2_CLIENT_SECRET = 'BiuyiuwqIYBI3123'
-LR2_CALLBACK = 'http://127.0.0.1:9012/redirect/'

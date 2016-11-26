@@ -38,10 +38,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(verbose_name='Персонал?', default=False)
     is_active = models.BooleanField(verbose_name='Активен?', default=False)
 
-    code = models.CharField(verbose_name='OAuth2 Code', unique=True, max_length=100)
-    access_token = models.CharField(verbose_name='Токен доступа', max_length=100, blank=True, null=True)
-    expires_in = models.PositiveIntegerField(verbose_name='Время действия токена', blank=True, null=True)
-
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
@@ -73,6 +69,61 @@ class User(AbstractBaseUser, PermissionsMixin):
                 company.as_dict() for company in self.travelcompany_set.all()
             ]
         }
+
+
+class Application(models.Model):
+    class Meta:
+        verbose_name = 'OAuth2 App'
+        verbose_name_plural = 'OAuth2 Apps'
+        unique_together = ('client_id', 'client_secret')
+
+    name = models.CharField(verbose_name='Название', max_length=100)
+    client_id = models.CharField(verbose_name='Client ID', max_length=100)
+    client_secret = models.CharField(verbose_name='Client Secret', max_length=255)
+    redirect_uri = models.CharField(verbose_name='Redirect URI', max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class OAuthCode(models.Model):
+    class Meta:
+        verbose_name = 'OAuth2 Code'
+        verbose_name_plural = 'OAuth2 Codes'
+
+    app = models.ForeignKey('Application')
+    user = models.ForeignKey('User')
+    token = models.CharField(verbose_name='Code', max_length=100)
+    expires = models.DateTimeField(verbose_name='Истекает в')
+
+    def __str__(self):
+        return self.token
+
+
+class AccessToken(models.Model):
+    class Meta:
+        verbose_name = 'Access Token'
+        verbose_name_plural = 'Access Tokens'
+
+    app = models.ForeignKey('Application')
+    user = models.ForeignKey('User', related_name='api_tokens')
+    token = models.CharField(verbose_name='Access Token', max_length=100)
+    expires = models.DateTimeField(verbose_name='Истекает в')
+
+    def __str__(self):
+        return self.token
+
+
+class RefreshToken(models.Model):
+    class Meta:
+        verbose_name = 'Refresh Token'
+        verbose_name_plural = 'Refresh Tokens'
+
+    token = models.CharField(verbose_name='Refresh Token', max_length=100)
+    access_token = models.ForeignKey('AccessToken')
+
+    def __str__(self):
+        return self.token
 
 
 class Location(models.Model):

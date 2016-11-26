@@ -6,17 +6,24 @@ app = Flask(__name__)
 server_data = {
     'host': '127.0.0.1',
     'port': '9011',
-    'api_key': '1435',
-    'api_secret': 'BiuyiuwqIYBI3123',
+    'api_key': 'EftqgfZ8YCxmUSa7tLIm9NZYW3X0hLhzktyUlwHV',
+    'api_secret': 'It9aTzpJP9bzS1KLCEyPi8xBsB1WPxHpMxbArCec7tT7ifky5RodBHeiOzJ9lMEv8tkb9Fzs4Zc1zLY5Uqj43OQKVWq15QmN5dPtHxl2wEmlL0ZKPJppAElyfs6cO9Jm',
+    'application_url': 'o2p'
 }
 client_data = {
     'host': '127.0.0.1',
     'port': '9012',
 }
+AUTHORIZE_URL = 'authorize'
+ACCESS_TOKEN_URL = 'token'
 
 
 def get_server_route(route):
-    return 'http://{0}:{1}/{2}'.format(server_data['host'], server_data['port'], route)
+    return 'http://{0}:{1}/{2}/{3}/'.format(
+        server_data['host'], server_data['port'], server_data['application_url'], route)
+
+def get_client_route(route):
+    return 'http://{0}:{1}/{2}/'.format(client_data['host'], client_data['port'], route)
 
 
 def send_response(status, obj=None):
@@ -59,8 +66,12 @@ def finish_auth():
     if not code:
         return send_response('ERROR')
 
-    data = {'grant_type': 'authorization_code', 'code': code}
-    finish_url = get_server_route('api/access_token/')
+    data = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': get_client_route('redirect'),
+    }
+    finish_url = get_server_route(ACCESS_TOKEN_URL)
     auth_data = (server_data['api_key'], server_data['api_secret'])
 
     response = requests.post(finish_url, data=data, auth=auth_data)
@@ -68,12 +79,12 @@ def finish_auth():
         token = response.json()["access_token"]
         client_data['access_token'] = token
         return redirect('/query/')
-    return send_response('ERROR', 'Not 200 on api/access_token/')
+    return send_response('ERROR', 'Not 200')
 
 
 @app.route('/start_auth/', methods=['GET'])
 def start_auth():
-    start_url = get_server_route('api/authorize/')
+    start_url = get_server_route(AUTHORIZE_URL)
     start_params = {
         'client_id': server_data['api_key'],
         'response_type': 'code',

@@ -1,0 +1,13 @@
+{% extends 'lr1_oauth/base.html' %}
+{% block title %}Разрешить?{% endblock %}
+
+{% block content %}
+    <h3>Вы доверяете клиентскому приложению?</h3>
+    <form action="{% url 'api:authorize' %}" method="post">
+        {% csrf_token %}
+        <p>Выполнение API запросов</p>
+        {{ form }}
+        <hr>
+        <button type="submit">Отправить</button>
+    </form>
+{% endblock %}

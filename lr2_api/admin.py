@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from lr2_api.models import User, Location, TravelCompany, Route
+from lr2_api.models import User, Location, TravelCompany, Route, Application
 
 
 @admin.register(TravelCompany)
@@ -19,7 +19,7 @@ class LocationAdmin(admin.ModelAdmin):
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('email', 'first_name', 'last_name', 'access_token', 'expires_in')
+    list_display = ('email', 'first_name', 'last_name')
     list_filter = ('is_active', 'is_staff')
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
@@ -30,3 +30,8 @@ class RouteAdmin(admin.ModelAdmin):
     list_display = ('name', 'price', 'company', 'depart_date', 'arrive_date')
     list_filter = ('company',)
     search_fields = ('name', 'price')
+
+
+@admin.register(Application)
+class ApplicationAdmin(admin.ModelAdmin):
+    list_filter = ('name', 'client_id', 'client_secret', 'redirect_uri')
