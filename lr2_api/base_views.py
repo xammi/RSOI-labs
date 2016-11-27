@@ -1,9 +1,11 @@
 import json
+
+from django.contrib.auth import authenticate
 from django.http import HttpResponseNotFound, HttpResponse, JsonResponse, HttpResponseForbidden
 from django.utils import timezone
 from django.views import View
 
-from lr2_api.models import User
+from lr2_api.models import User, AccessToken
 
 
 class JsonView(View):
@@ -91,12 +93,14 @@ class PaginateMixin(object):
 
 class OAuthRequiredMixin(object):
     def dispatch(self, request, *args, **kwargs):
-        token = request.META.get('Authorization')[7:]
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if not auth_header.startswith('Bearer'):
+            return HttpResponseForbidden()
+
+        token = auth_header[7:]
+        token = AccessToken.objects.filter(token=token, expires__gt=timezone.now()).first()
         if not token:
             return HttpResponseForbidden()
-        user = User.objects.filter(access_token=token).first()
-        if not user:
-            return HttpResponseForbidden()
-        if user.expires_in < timezone.now():
-            return HttpResponse(status=405)
-        return super(OAuthRequiredMixin, self).dispatch(request, user=user, *args, **kwargs)
+
+        request.user = token.user
+        return super(OAuthRequiredMixin, self).dispatch(request, user=token.user, *args, **kwargs)

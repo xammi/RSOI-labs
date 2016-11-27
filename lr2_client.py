@@ -46,11 +46,12 @@ query_template = '''
 
 @app.route('/query/', methods=['GET', 'POST'])
 def send_query():
+    token = client_data.get('access_token')
+    if not token:
+        return send_response('ERROR', {'msg': 'No token'})
+
     if request.method == 'POST':
-        query = request.args.post('query')
-        token = client_data.get('access_token')
-        if not token:
-            return send_response('ERROR', {'msg': 'No token', 'query': query})
+        query = request.form.get('query')
         url = get_server_route(query)
         response = requests.request('GET', url, headers={'Authorization': 'Bearer:{0}'.format(token)})
         if response.status_code != 200:
