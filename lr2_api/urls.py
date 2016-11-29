@@ -19,17 +19,10 @@ urlpatterns = [
     url(r'^companies/$', TravelCompaniesView.as_view(), name='travel_companies'),
 
     # by token
-    url(r'^me/$',
-        PersonalInfoView.as_view(),
-        name='me'),
-
-    url(r'^routes/$',
-        MyRoutesView.as_view(),
-        name='my_routes'),
-
-    url(r'^route/(?P<route_id>\d+)/$',
-        RouteView.as_view(),
-        name='route'),
+    url(r'^me/$', PersonalInfoView.as_view(), name='me'),
+    url(r'^routes/$', MyRoutesView.as_view(), name='my_routes'),
+    url(r'^route/$', RouteView.as_view(), name='route'),
+    url(r'^route/(?P<route_id>\d+)/$', RouteView.as_view(), name='route'),
 
     url(r'^route/(?P<route_id>\d+)/location/(?P<location_id>\d+)/$',
         RouteLocationView.as_view(),

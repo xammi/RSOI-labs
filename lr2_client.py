@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta
 import requests
 from flask import Flask, request, redirect, make_response, jsonify
+import json
 
 app = Flask(__name__)
 
@@ -17,14 +19,26 @@ client_data = {
 AUTHORIZE_URL = 'authorize'
 ACCESS_TOKEN_URL = 'token'
 
+example_route_post = '''
+{
+    "name": "my_name",
+    "company": 7,
+    "price": 10000,
+    "depart_date": "2016-10-10",
+    "arrive_date": "2016-12-12"
+}
+'''
+
 
 def get_server_route(route):
-    return 'http://{0}:{1}/{2}/{3}/'.format(
-        server_data['host'], server_data['port'], server_data['application_url'], route)
+    backslash = '?' not in route
+    return 'http://{0}:{1}/{2}/{3}'.format(
+        server_data['host'], server_data['port'], server_data['application_url'], route) + ('/' if backslash else '')
 
 
 def get_client_route(route):
-    return 'http://{0}:{1}/{2}/'.format(client_data['host'], client_data['port'], route)
+    backslash = '?' not in route
+    return 'http://{0}:{1}/{2}'.format(client_data['host'], client_data['port'], route) + ('/' if backslash else '')
 
 
 def send_response(status, obj=None):
@@ -36,10 +50,25 @@ def send_response(status, obj=None):
 
 query_template = '''
 <html>
-<head><title>LR2 Client</title></head><body>
-<h3>Сделать запрос в API</h3><div id="query-form">
-<form action="/query/" method="POST"><input type="text" name="query"><button type="submit">Send</button></form>
-</div><div id="query-data">{0}</div></body>
+<head><title>LR2 Client</title><meta charset="utf-8"></head>
+<body>
+  <div>Access Token: {1}</div>
+  <h3>Сделать запрос в API</h3><div id="query-form">
+
+  <form action="/query/" method="POST">
+    <select name="method">
+      <option value="GET">GET</option>
+      <option value="POST">POST</option>
+      <option value="PATCH">PATCH</option>
+      <option value="DELETE">DELETE</option>
+    </select>
+    <input type="text" name="query" style="width:400px" value="{2}"><br><br>
+    <textarea name="body">{3}</textarea><br><br>
+    <button type="submit">Send</button>
+  </form>
+
+  </div><pre id="query-data">{0}</pre>
+</body>
 </html>
 '''
 
@@ -52,14 +81,22 @@ def send_query():
 
     if request.method == 'POST':
         query = request.form.get('query')
+        method = request.form.get('method')
+        body = request.form.get('body')
         url = get_server_route(query)
-        response = requests.request('GET', url, headers={'Authorization': 'Bearer:{0}'.format(token)})
+        headers = {'Authorization': 'Bearer:{0}'.format(token)}
+        if not body:
+            response = requests.request(method, url, headers=headers)
+        else:
+            data = json.loads(body.replace(r'\n\r', '').replace(',}', '}'))
+            response = requests.request(method, url, headers=headers, data=data)
+
         if response.status_code != 200:
-            return send_response('ERROR', '{} code for {}'.format(response.status_code, url))
-        result = response.json()
-    else:
-        result = ''
-    return query_template.format(result)
+            result = 'ERROR', '{} code for {}'.format(response.status_code, url)
+        else:
+            result = json.dumps(response.json(), indent=4, ensure_ascii=False)
+        return query_template.format(result, client_data.get('access_token'), query, body or '')
+    return query_template.format('', client_data.get('access_token'), '', '')
 
 
 @app.route('/redirect/', methods=['GET'])
@@ -78,8 +115,13 @@ def finish_auth():
 
     response = requests.post(finish_url, data=data, auth=auth_data)
     if response.status_code == 200:
-        token = response.json()["access_token"]
-        client_data['access_token'] = token
+        resp_data = response.json()
+        client_data.update({
+            'access_token': resp_data.get('access_token'),
+            'refresh_token': resp_data.get('refresh_token'),
+            'expires_in': datetime.now() + timedelta(seconds=resp_data.get('expires_in')),
+        })
+
         return redirect('/query/')
     return send_response('ERROR', 'Not 200')
 

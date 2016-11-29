@@ -1,11 +1,9 @@
 import json
-
-from django.contrib.auth import authenticate
 from django.http import HttpResponseNotFound, HttpResponse, JsonResponse, HttpResponseForbidden
 from django.utils import timezone
 from django.views import View
 
-from lr2_api.models import User, AccessToken
+from lr2_api.models import User, AccessToken, RefreshToken
 
 
 class JsonView(View):
@@ -81,10 +79,9 @@ class PaginateMixin(object):
 
     def get(self, request, *args, **kwargs):
         size, page = self.extract_params(request.GET)
-        if size == 0:
-            return JsonResponse({})
-
         all_pages, all_cnt = self.get_pages_cnt(size, **kwargs)
+        if size == 0 or all_cnt == 0:
+            return JsonResponse({})
         if page > all_pages:
             return HttpResponseNotFound()
         return super(PaginateMixin, self).get(request, page=page, size=size, all_pages=all_pages, all_cnt=all_cnt,

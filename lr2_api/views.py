@@ -240,20 +240,17 @@ class RouteView(OAuthRequiredMixin, JsonView):
     http_method_names = ['get', 'post', 'patch']
     form_class = RouteForm
 
+    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
-        if request.method == 'POST':
-            return super(RouteView, self).dispatch(request, *args, **kwargs)
-
-        route = get_object_or_404(Route, id=kwargs.get('route_id'))
-        user = kwargs.get('user')
-        if user and route in user.route_set:
-            return super(RouteView, self).dispatch(request, route=route, *args, **kwargs)
-
-        return HttpResponseForbidden()
+        return super(RouteView, self).dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        json_data = kwargs.get('route').as_dict()
-        return self.prepare_response(request, json_data=json_data, *args, **kwargs)
+        route = get_object_or_404(Route, id=kwargs.get('route_id'))
+        user = kwargs.get('user')
+        if user and route.company.user == user:
+            json_data = route.as_dict()
+            return self.prepare_response(request, json_data=json_data, *args, **kwargs)
+        return HttpResponseForbidden()
 
     def post(self, request, *args, **kwargs):
         json_data = {'status': 'OK'}
@@ -262,21 +259,30 @@ class RouteView(OAuthRequiredMixin, JsonView):
             ins = form.save()
         else:
             json_data = form.errors
-        return self.prepare_response(request, json_data, *args, **kwargs)
+        return self.prepare_response(request, json_data=json_data, *args, **kwargs)
 
     def patch(self, request, *args, **kwargs):
-        json_data = {'status': 'OK'}
-        form = self.form_class(request.PATCH, instance=kwargs.get('route'))
-        if form.is_valid():
-            ins = form.save()
-        else:
-            json_data = form.errors
-        return self.prepare_response(request, json_data, *args, **kwargs)
+        route = get_object_or_404(Route, id=kwargs.get('route_id'))
+        user = kwargs.get('user')
+        if user and route.company.user == user:
+            json_data = {'status': 'OK'}
+            body_lists = [tuple(pair.split('=')) for pair in str(request.body)[2:-1].split('&')]
+            body_dict = dict()
+            for key, value in body_lists:
+                body_dict[str(key)] = str(value)
+            form = self.form_class(data=body_dict, instance=route)
+            if form.is_valid():
+                ins = form.save()
+            else:
+                json_data = form.errors
+            return self.prepare_response(request, json_data=json_data, *args, **kwargs)
+        return HttpResponseForbidden()
 
 
 class RouteLocationView(OAuthRequiredMixin, JsonView):
     http_method_names = ['post', 'delete']
 
+    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         route = get_object_or_404(Route, id=kwargs.get('route_id'))
         location = get_object_or_404(Location, id=kwargs.get('location_id'))
@@ -301,6 +307,10 @@ class RouteLocationView(OAuthRequiredMixin, JsonView):
 
 class RouteRegisterView(OAuthRequiredMixin, JsonView):
     http_method_names = ['post']
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super(RouteRegisterView, self).dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         route = get_object_or_404(Route, id=kwargs.get('route_id'))

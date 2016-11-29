@@ -168,7 +168,7 @@ class TravelCompany(models.Model):
             'abbr': self.abbreviation,
             'name': self.name,
             'info': self.info if self.info else None,
-            'owner': self.user if self.user else None
+            'owner': {'email': self.user.get_full_name(), 'id': self.user.id} if self.user else None
         }
 
 
