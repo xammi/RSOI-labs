@@ -1,4 +1,9 @@
+import base64
 import random
+
+import binascii
+from urllib.parse import unquote_plus
+
 from flask import jsonify, make_response
 from datetime import datetime
 
@@ -62,3 +67,26 @@ def cursor_to_list(cursor):
 def generate_token(length=30, chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'):
     rand = random.SystemRandom()
     return ''.join(rand.choice(chars) for _ in range(length))
+
+
+def extract_client(request, apps):
+    try:
+        enc = request.charset or 'utf-8'
+    except AttributeError:
+        enc = 'utf-8'
+    auth_string = request.headers.environ.get('HTTP_AUTHORIZATION')
+    auth_string = auth_string.split(' ', 1)[1]
+    try:
+        b64_dec = base64.b64decode(auth_string)
+    except (TypeError, binascii.Error):
+        return None
+    try:
+        auth_decoded = b64_dec.decode(enc)
+    except UnicodeDecodeError:
+        return None
+    client_id, client_secret = map(unquote_plus, auth_decoded.split(':', 1))
+
+    app = apps.get(client_id)
+    if app and app['client_secret'] == client_secret:
+        return app
+    return None
