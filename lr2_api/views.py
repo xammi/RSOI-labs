@@ -284,22 +284,25 @@ class RouteLocationView(OAuthRequiredMixin, JsonView):
 
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
-        route = get_object_or_404(Route, id=kwargs.get('route_id'))
-        location = get_object_or_404(Location, id=kwargs.get('location_id'))
-
-        user = kwargs.get('user')
-        if user and route in user.route_set:
-            return super(RouteLocationView, self).dispatch(request, route=route, location=location,
-                                                           *args, **kwargs)
-        return HttpResponseForbidden()
+        return super(RouteLocationView, self).dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        kwargs.get('route').locations.add(kwargs.get('location'))
-        return super(RouteLocationView, self).post(request, *args, **kwargs)
+        route = get_object_or_404(Route, id=kwargs.get('route_id'))
+        location = get_object_or_404(Location, id=kwargs.get('location_id'))
+        user = kwargs.get('user')
+        if user and route.company.user == user:
+            route.locations.add(location)
+            return super(RouteLocationView, self).post(request, *args, **kwargs)
+        return HttpResponseForbidden()
 
     def delete(self, request, *args, **kwargs):
-        kwargs.get('route').locations.remove(kwargs.get('location'))
-        return super(RouteLocationView, self).delete(request, *args, **kwargs)
+        route = get_object_or_404(Route, id=kwargs.get('route_id'))
+        location = get_object_or_404(Location, id=kwargs.get('location_id'))
+        user = kwargs.get('user')
+        if user and route.company.user == user:
+            route.locations.remove(location)
+            return super(RouteLocationView, self).delete(request, *args, **kwargs)
+        return HttpResponseForbidden()
 
     def get_json_data(self, **kwargs):
         return {'status': 'OK'}
