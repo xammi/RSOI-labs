@@ -7,8 +7,8 @@ app = Flask(__name__)
 app.config['MONGO_DBNAME'] = 'company_bd'
 mongo = PyMongo(app)
 
-
 COMPANY_FIELDS = ['abbreviation', 'name', 'info', 'user']
+SECRET_HEADER = 'ewifyw521763eyuwfgeuwYTWDYA'
 
 
 @app.route('/companies/', methods=['GET'])
@@ -18,8 +18,9 @@ def companies_view():
     """
 
     find_params = {}
-    email = request.headers.environ.get('email')
-    if email:
+    email = request.headers.environ.get('HTTP_X_EMAIL')
+    secret = request.headers.environ.get('HTTP_X_SECRET')
+    if email and secret == SECRET_HEADER:
         find_params['user'] = email
 
     try:

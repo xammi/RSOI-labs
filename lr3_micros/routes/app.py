@@ -11,6 +11,7 @@ mongo = PyMongo(app)
 
 ROUTE_FIELDS = ['name', 'departure', 'arrival', 'locations', 'price', 'company']
 COMPANY_SERVICE_URL = 'http://127.0.0.1:9092/'
+SECRET_HEADER = 'ewifyw521763eyuwfgeuwYTWDYA'
 
 
 @app.route('/routes/', methods=['GET'])
@@ -26,6 +27,18 @@ def routes_view():
 
     except Error as e:
         return send_error(request, e.code)
+
+
+@app.route('/my_routes/', methods=['GET'])
+def my_routes_view():
+    email = request.headers.environ.get('HTTP_X_EMAIL')
+    secret = request.headers.environ.get('HTTP_X_SECRET')
+    if not email or secret != SECRET_HEADER:
+        return send_error(request, 403)
+
+    routes = mongo.db.route.find({'users': email})
+    routes = cursor_to_list(routes)
+    return send_response(request, {'status': 'OK', 'data': routes})
 
 
 @app.route('/route/', methods=['POST'])
@@ -82,8 +95,27 @@ def get_route_view(route_id):
 
 @app.route('/route/<route_id>/register/', methods=['POST'])
 def register_view(route_id):
-    #TODO: register user on route
-    return send_response(request, {'status': 'OK'})
+    """
+    curl -X post 'http://127.0.0.1:9093/route/586f9570050df411919ca465/register/' -H 'X_EMAIL: xammi@yandex.ru' -H 'X_SECRET: ewifyw521763eyuwfgeuwYTWDYA'
+    """
+
+    email = request.headers.environ.get('HTTP_X_EMAIL')
+    secret = request.headers.environ.get('HTTP_X_SECRET')
+    if not email or secret != SECRET_HEADER:
+        return send_error(request, 403)
+
+    route = mongo.db.route.find({'_id': ObjectId(route_id)})
+    if route.count() == 0:
+        return send_error(request, 404)
+
+    route = cursor_to_list(route)[0]
+    users_on_route = route.get('users', [])
+    if email not in users_on_route:
+        users_on_route.append(email)
+        result = mongo.db.route.update_one({'_id': ObjectId(route_id)}, {'$set': {'users': users_on_route}})
+        return send_response(request, {'status': 'OK', 'updated': result.matched_count})
+    else:
+        return send_response(request, {'status': 'OK', 'updated': 0})
 
 
 if __name__ == '__main__':

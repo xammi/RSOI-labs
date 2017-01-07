@@ -16,6 +16,7 @@ app.config['SESSION_TYPE'] = 'mongodb'
 mongo = PyMongo(app)
 
 USER_FIELDS = ['email', 'password', 'first_name', 'last_name']
+SECRET_HEADER = 'ewifyw521763eyuwfgeuwYTWDYA'
 
 
 base_tmpl = '''
@@ -212,16 +213,20 @@ def personal_view():
     user_data = mongo.db.user.find({'email': user})
     user_data = cursor_to_list(user_data)[0]
     del user_data['password']
-
     if request.args.get('internal'):
         return send_response(request, {'status': 'OK', 'data': user_data})
 
-    response = requests.get(COMPANY_SERVICE_URL + 'companies/', headers={'X-EMAIL': user_data['email']})
+    headers = {'X_EMAIL': user_data['email'], 'X_SECRET': SECRET_HEADER}
+    response = requests.get(COMPANY_SERVICE_URL + 'companies/', headers=headers)
     if response.status_code == 200:
         companies = json.loads(response.text)
         user_data['companies'] = companies['data']
 
-    # TODO: show routes
+    response = requests.get(ROUTE_SERVICE_URL + 'my_routes/', headers=headers)
+    if response.status_code == 200:
+        routes = json.loads(response.text)
+        user_data['routes'] = routes['data']
+
     return send_response(request, {'status': 'OK', 'data': user_data})
 
 
