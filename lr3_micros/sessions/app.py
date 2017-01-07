@@ -230,5 +230,18 @@ def personal_view():
     return send_response(request, {'status': 'OK', 'data': user_data})
 
 
+@app.route('/route/<route_id>/register/', methods=['POST'])
+def register_me(route_id):
+    user = check_access(request, mongo.db.OAuth2Access)
+    if not user:
+        return send_error(request, 403)
+
+    headers = {'X_EMAIL': user, 'X_SECRET': SECRET_HEADER}
+    response = requests.post(ROUTE_SERVICE_URL + 'route/%s/register/' % route_id, headers=headers)
+    if response.status_code == 200:
+        return send_response(request, {'status': 'OK'})
+    return send_error(request, response.status_code)
+
+
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=9091)
