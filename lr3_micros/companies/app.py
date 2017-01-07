@@ -17,8 +17,13 @@ def companies_view():
     curl -X GET 'http://localhost:9092/companies/?size=2&page=2'
     """
 
+    find_params = {}
+    email = request.headers.environ.get('email')
+    if email:
+        find_params['user'] = email
+
     try:
-        companies = mongo.db.company.find({}).sort('created', DESCENDING)
+        companies = mongo.db.company.find(find_params).sort('created', DESCENDING)
         result = paginate(request, data=companies)
         return send_response(request, result)
 

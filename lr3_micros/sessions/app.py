@@ -1,3 +1,5 @@
+import requests
+import json
 from hashlib import sha256 as get_hash
 from flask import Flask, request, redirect, session
 from flask.ext.pymongo import PyMongo
@@ -197,6 +199,10 @@ def access_token_view():
     return send_response(request, token)
 
 
+COMPANY_SERVICE_URL = 'http://127.0.0.1:9092/'
+ROUTE_SERVICE_URL = 'http://127.0.0.1:9093/'
+
+
 @app.route('/me/', methods=['GET'])
 def personal_view():
     user = check_access(request, mongo.db.OAuth2Access)
@@ -206,7 +212,16 @@ def personal_view():
     user_data = mongo.db.user.find({'email': user})
     user_data = cursor_to_list(user_data)[0]
     del user_data['password']
-    #TODO: show companies and routes
+
+    if request.args.get('internal'):
+        return send_response(request, {'status': 'OK', 'data': user_data})
+
+    response = requests.get(COMPANY_SERVICE_URL + 'companies/', headers={'X-EMAIL': user_data['email']})
+    if response.status_code == 200:
+        companies = json.loads(response.text)
+        user_data['companies'] = companies['data']
+
+    # TODO: show routes
     return send_response(request, {'status': 'OK', 'data': user_data})
 
 
