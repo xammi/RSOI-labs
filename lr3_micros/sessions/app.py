@@ -1,7 +1,8 @@
 from hashlib import sha256 as get_hash
 from flask import Flask, request, redirect, session
 from flask.ext.pymongo import PyMongo
-from lr3_micros.sessions.utils import send_response, send_error, cursor_to_list, generate_token, extract_client
+from lr3_micros.sessions.utils import send_response, send_error, cursor_to_list, generate_token, extract_client, \
+    check_access
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, quote, urlparse, unquote
 
@@ -178,24 +179,35 @@ def access_token_view():
         return send_error(request, 400)
 
     app = extract_client(request, OAUTH2_APPS)
-    grant = mongo.db.OAuth2Code.find({'client_id': app['client_id'], 'code': code, 'expires': {'$gt': datetime.now()}})
+    grant = mongo.db.OAuth2Code.find({'app': app['client_id'], 'token': code, 'expires': {'$gt': datetime.now()}})
     if grant.count() == 0:
         return send_error(request, 404)
 
+    grant = cursor_to_list(grant)[0]
     token = {
-        'expires_in': 3600,
+        'expires_in': datetime.now() + timedelta(seconds=36000),
         'access_token': generate_token(),
         'refresh_token': generate_token(),
         'token_type': 'Bearer',
+        'user': grant['user'],
     }
-    # save token
+    mongo.db.OAuth2Access.insert(token)
     mongo.db.OAuth2Code.delete_one({'token': code, 'app': app['client_id']})
+    token['expires_in'] = 36000
     return send_response(request, token)
 
 
 @app.route('/me/', methods=['GET'])
 def personal_view():
-    return send_response(request, {'status': 'OK'})
+    user = check_access(request, mongo.db.OAuth2Access)
+    if not user:
+        return send_error(request, 403)
+
+    user_data = mongo.db.user.find({'email': user})
+    user_data = cursor_to_list(user_data)[0]
+    del user_data['password']
+    #TODO: show companies and routes
+    return send_response(request, {'status': 'OK', 'data': user_data})
 
 
 if __name__ == '__main__':

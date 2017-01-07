@@ -35,6 +35,8 @@ def create_route_view():
     -d '{"name": "North Russia", "departure": "2015-10-10 12:00:00", "arrival": "2015-10-15 18:00:00", "price": 100, "company": "TTS"}'
     """
 
+    #TODO: check company owner
+
     route = {field: request.json.get(field) for field in ROUTE_FIELDS}
     response = requests.get(COMPANY_SERVICE_URL + 'company/' + route['company'])
     if response.status_code == 404:
@@ -61,6 +63,8 @@ def get_route_view(route_id):
             return send_error(request, 404)
 
     elif request.method == 'PATCH':
+        #TODO: check company owner
+
         route = {field: request.json.get(field) for field in ROUTE_FIELDS if field in request.json}
         if len(route) == 0:
             return send_error(request, 400)
@@ -70,12 +74,15 @@ def get_route_view(route_id):
         return send_response(request, {'status': 'OK', 'updated': result.matched_count})
 
     elif request.method == 'DELETE':
+        #TODO: check company owner
+
         result = mongo.db.route.delete_one({'_id': ObjectId(route_id)})
         return send_response(request, {'_id': route_id, 'deleted': result.deleted_count})
 
 
 @app.route('/route/<route_id>/register/', methods=['POST'])
 def register_view(route_id):
+    #TODO: register user on route
     return send_response(request, {'status': 'OK'})
 
 

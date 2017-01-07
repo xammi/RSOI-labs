@@ -5,6 +5,7 @@ import json
 
 app = Flask(__name__)
 
+#TODO: make map of URLs to servers
 server_data = {
     'host': '127.0.0.1',
     'port': '9091',

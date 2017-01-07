@@ -43,6 +43,8 @@ def get_company_view(abbr):
             return send_error(request, 404)
 
     elif request.method == 'PATCH':
+        #TODO: check owner
+
         company = {field: request.json.get(field) for field in COMPANY_FIELDS if field in request.json}
         if len(company) == 0:
             return send_error(request, 400)
@@ -52,6 +54,8 @@ def get_company_view(abbr):
         return send_response(request, {'status': 'OK', 'updated': result.matched_count})
 
     elif request.method == 'DELETE':
+        #TODO: check owner
+
         result = mongo.db.company.delete_one({'abbreviation': abbr})
         return send_response(request, {'abbreviation': abbr, 'deleted': result.deleted_count})
 
@@ -62,6 +66,8 @@ def create_company_view():
     curl -X POST -H "Content-Type: application/json" 'http://127.0.0.1:9092/company/' \
     -d '{"abbreviation": "TTS", "name": "Transport Travel System", "info": null, "user": "xammi-1@yandex.ru"}'
     """
+
+    #TODO: create with owner
 
     company = {field: request.json.get(field) for field in COMPANY_FIELDS}
     found = mongo.db.company.find({'abbreviation': company['abbreviation']}).count()
