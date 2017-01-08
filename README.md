@@ -39,6 +39,7 @@ $ python3 ./lr3_client.py
 ### take personal info (aggregation query): GET me
 
 ### the result is:
+```json
 {
     "data": {
         "first_name": "Максим",
@@ -73,3 +74,4 @@ $ python3 ./lr3_client.py
     },
     "status": "OK"
 }
+```
