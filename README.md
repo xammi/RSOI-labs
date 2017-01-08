@@ -1,42 +1,44 @@
-## prerequisites
+## Prerequisites
 python3, flask, MongoDB, pymongo
 
-## launch mongodb
+## Getting started
+
+### launch mongodb
 ```sh
 $ /usr/local/Cellar/mongodb/3.4.0/bin/mongod
 ```
 
-## launch services
+### launch services
 ```sh
 $ python3 ./lr3_micros/companies/app.py
 $ python3 ./lr3_micros/routes/app.py
 $ python3 ./lr3_micros/sessions/app.py
 ```
 
-## create company
+### create company
 ```sh
 $ curl -X POST -H "Content-Type: application/json" 'http://127.0.0.1:9092/company/' -d '{"abbreviation": "TTS", "name": "Transport Travel System", "info": null, "user": "xammi@yandex.ru"}'
 $ curl -X GET 'http://localhost:9092/companies/?size=3&page=1'
 ```
 
-## create route
+### create route
 ```sh
 $ curl -X POST -H "Content-Type: application/json" 'http://127.0.0.1:9093/route/' -d '{"name": "North Russia", "departure": "2015-10-10 12:00:00", "arrival": "2015-10-15 18:00:00", "price": 100, "company": "TTS"}'
 $ curl -X GET 'http://127.0.0.1:9093/routes/?size=2&page=1'
 ```
 
-## register user in browser by URL: http://127.0.0.1:9091/register/
+### register user in browser by URL: http://127.0.0.1:9091/register/
 
-## launch client application
+### launch client application
 ```sh
 $ python3 ./lr3_client.py
 ```
 
-## authorize through oauth2 by URL: http://127.0.0.1:9090/
-## register on route by query: POST route/586f9570050df411919ca465/register
-## take personal info (aggregation query): GET me
+### authorize through oauth2 by URL: http://127.0.0.1:9090/
+### register on route by query: POST route/586f9570050df411919ca465/register
+### take personal info (aggregation query): GET me
 
-## the result is:
+### the result is:
 {
     "data": {
         "first_name": "Максим",
