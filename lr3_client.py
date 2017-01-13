@@ -109,7 +109,7 @@ def finish_auth():
         client_data.update({
             'access_token': resp_data.get('access_token'),
             'refresh_token': resp_data.get('refresh_token'),
-            'expires_in': datetime.now() + timedelta(seconds=resp_data.get('expires_in')),
+            'expires_in': datetime.now() + timedelta(seconds=resp_data.get('expires_in', 0)),
         })
 
         return redirect('/query/')
