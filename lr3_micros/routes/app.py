@@ -11,7 +11,6 @@ mongo = PyMongo(app)
 
 ROUTE_FIELDS = ['name', 'departure', 'arrival', 'locations', 'price', 'company']
 COMPANY_SERVICE_URL = 'http://127.0.0.1:9092/'
-SECRET_HEADER = 'ewifyw521763eyuwfgeuwYTWDYA'
 
 
 @app.route('/routes/', methods=['GET'])
@@ -32,8 +31,7 @@ def routes_view():
 @app.route('/my_routes/', methods=['GET'])
 def my_routes_view():
     email = request.headers.environ.get('HTTP_X_EMAIL')
-    secret = request.headers.environ.get('HTTP_X_SECRET')
-    if not email or secret != SECRET_HEADER:
+    if not email:
         return send_error(request, 403)
 
     routes = mongo.db.route.find({'users': email})
@@ -100,9 +98,8 @@ def register_view(route_id):
     """
 
     email = request.headers.environ.get('HTTP_X_EMAIL')
-    secret = request.headers.environ.get('HTTP_X_SECRET')
-    if not email or secret != SECRET_HEADER:
-        return send_error(request, 403)
+    if not email:
+        return send_error(request, 404)
 
     route = mongo.db.route.find({'_id': ObjectId(route_id)})
     if route.count() == 0:

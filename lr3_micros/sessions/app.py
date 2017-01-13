@@ -1,12 +1,9 @@
-import requests
-import json
 from hashlib import sha256 as get_hash
-from flask import Flask, request, redirect, session
+from flask import Flask, request, redirect, session, render_template
 from flask.ext.pymongo import PyMongo
-from lr3_micros.sessions.utils import send_response, send_error, cursor_to_list, generate_token, extract_client, \
-    check_access
+from lr3_micros.sessions.utils import send_response, send_error, cursor_to_list, generate_token, extract_client
 from datetime import datetime, timedelta
-from urllib.parse import urljoin, quote, urlparse, unquote
+from urllib.parse import quote, unquote
 
 
 app = Flask(__name__)
@@ -16,41 +13,15 @@ app.config['SESSION_TYPE'] = 'mongodb'
 mongo = PyMongo(app)
 
 USER_FIELDS = ['email', 'password', 'first_name', 'last_name']
-SECRET_HEADER = 'ewifyw521763eyuwfgeuwYTWDYA'
-
-
-base_tmpl = '''
-<html>
-  <head><title>LR3 Client</title><meta charset="utf-8"></head>
-  <body>%(content)s</body>
-</html>
-'''
-
-register_tmpl = base_tmpl % {'content': '''
-<form action="/register/" method="post">
-  <label for="id_email">Email:</label><input name="email" id="id_email" type="email"/>
-  <label for="id_password">Пароль:</label><input name="password" id="id_password" type="password"/>
-  <label for="id_first_name">Имя:</label><input name="first_name" id="id_first_name" type="text"/>
-  <label for="id_last_name">Фамилия:</label><input name="last_name" id="id_last_name" type="text"/>
-  <button type="submit">Отправить</button>
-</form>
-<a href="/login/">Авторизация</a>
-'''}
-
-auth_tmpl = base_tmpl % {'content': '''
-<div id="content">
-  <h3>Вы уже авторизованы как:</h3>
-  <h3>%s</h3>
-</div>
-<a href="/logout/">Выйти</a>
-'''}
 
 
 @app.route('/register/', methods=['GET', 'POST'])
 def register_view():
     if request.method == 'GET':
         auth = session.get('email')
-        return auth_tmpl % auth if auth else register_tmpl
+        if auth:
+            return render_template('yet_auth.html', email=auth)
+        return render_template('register.html')
 
     elif request.method == 'POST':
         user = {field: request.form.get(field) for field in USER_FIELDS}
@@ -67,21 +38,13 @@ def register_view():
         return redirect('/login/')
 
 
-login_tmpl = base_tmpl % {'content': '''
-<form action="%s" method="post">
-  <label for="id_email">Email:</label><input name="email" id="id_email" type="email"/>
-  <label for="id_password">Пароль:</label><input name="password" id="id_password" type="password"/>
-  <button type="submit">Отправить</button>
-</form>
-<a href="/register/">Регистрация</a>
-'''}
-
-
 @app.route('/login/', methods=['GET', 'POST'])
 def login_view():
     if request.method == 'GET':
         auth = session.get('email')
-        return auth_tmpl % auth if auth else login_tmpl % request.url
+        if auth:
+            return render_template('yet_auth.html', email=auth)
+        return render_template('login.html', url=request.url)
 
     elif request.method == 'POST':
         email = request.form.get('email')
@@ -107,19 +70,6 @@ def login_view():
 def logout_view():
     session.pop('email', None)
     return redirect('/login/')
-
-
-allow_tmpl = base_tmpl % {'content': '''
-<h3>Вы доверяете клиентскому приложению?</h3>
-<form action="/authorize/" method="post">
-  <p>Выполнение API запросов</p>
-  <input type="radio" name="allow"/>
-  <input type="hidden" name="redirect_uri" value="%(redirect_uri)s"/>
-  <input type="hidden" name="client_id" value="%(client_id)s"/>
-  <input type="hidden" name="response_type" value="%(response_type)s"/>
-  <button type="submit">Отправить</button>
-</form>
-'''}
 
 
 OAUTH2_APPS = {
@@ -156,7 +106,7 @@ def authorize_view():
             'client_id': client_id, 'response_type': response_type,
             'redirect_uri': OAUTH2_APPS.get(client_id, {}).get('callback_uri'),
         }
-        return allow_tmpl % form_values
+        return render_template('accept.html', **form_values)
 
     elif request.method == 'POST':
         allow = request.form.get('allow')
@@ -200,47 +150,24 @@ def access_token_view():
     return send_response(request, token)
 
 
-COMPANY_SERVICE_URL = 'http://127.0.0.1:9092/'
-ROUTE_SERVICE_URL = 'http://127.0.0.1:9093/'
-
-
-@app.route('/me/', methods=['GET'])
-def personal_view():
-    user = check_access(request, mongo.db.OAuth2Access)
-    if not user:
+@app.route('/identify/', methods=['GET'])
+def identify_view():
+    auth_header = request.headers.environ.get('HTTP_AUTHORIZATION', '')
+    if not auth_header.startswith('Bearer'):
         return send_error(request, 403)
 
-    user_data = mongo.db.user.find({'email': user})
-    user_data = cursor_to_list(user_data)[0]
-    del user_data['password']
-    if request.args.get('internal'):
-        return send_response(request, {'status': 'OK', 'data': user_data})
+    token = auth_header[7:]
+    grant = mongo.db.OAuth2Access.find({'access_token': token, 'expires_in': {'$gt': datetime.now()}})
+    if grant.count() == 0:
+        return send_error(request, 403)
 
-    headers = {'X_EMAIL': user_data['email'], 'X_SECRET': SECRET_HEADER}
-    response = requests.get(COMPANY_SERVICE_URL + 'companies/', headers=headers)
-    if response.status_code == 200:
-        companies = json.loads(response.text)
-        user_data['companies'] = companies['data']
+    grant = cursor_to_list(grant)[0]
+    user_cursor = mongo.db.user.find({'email': grant['user']})
+    if user_cursor.count() != 1:
+        return send_error(request, 403)
 
-    response = requests.get(ROUTE_SERVICE_URL + 'my_routes/', headers=headers)
-    if response.status_code == 200:
-        routes = json.loads(response.text)
-        user_data['routes'] = routes['data']
-
+    user_data = cursor_to_list(user_cursor)[0]
     return send_response(request, {'status': 'OK', 'data': user_data})
-
-
-@app.route('/route/<route_id>/register/', methods=['POST'])
-def register_me(route_id):
-    user = check_access(request, mongo.db.OAuth2Access)
-    if not user:
-        return send_error(request, 403)
-
-    headers = {'X_EMAIL': user, 'X_SECRET': SECRET_HEADER}
-    response = requests.post(ROUTE_SERVICE_URL + 'route/%s/register/' % route_id, headers=headers)
-    if response.status_code == 200:
-        return send_response(request, {'status': 'OK'})
-    return send_error(request, response.status_code)
 
 
 if __name__ == '__main__':

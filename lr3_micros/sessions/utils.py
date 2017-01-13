@@ -90,17 +90,3 @@ def extract_client(request, apps):
     if app and app['client_secret'] == client_secret:
         return app
     return None
-
-
-def check_access(request, access_collection):
-    auth_header = request.headers.environ.get('HTTP_AUTHORIZATION', '')
-    if not auth_header.startswith('Bearer'):
-        return None
-
-    token = auth_header[7:]
-    grant = access_collection.find({'access_token': token, 'expires_in': {'$gt': datetime.now()}})
-    if grant.count() == 0:
-        return None
-
-    grant = cursor_to_list(grant)[0]
-    return grant['user']

@@ -8,7 +8,7 @@ app = Flask(__name__)
 #TODO: make map of URLs to servers
 server_data = {
     'host': '127.0.0.1',
-    'port': '9091',
+    'port': '9094',
     'api_key': 'EftqgfZ8YCxmUSa7tLIm9NZYW3X0hLhzktyUlwHV',
     'api_secret': 'It9aTzpJP9bzS1KLCEyPi8xBsB1WPxHpMxbArCec7tT7ifky5RodBHeiOzJ9lMEv8tkb9Fzs4Zc1zLY5Uqj43OQKVWq15QmN5dPtHxl2wEmlL0ZKPJppAElyfs6cO9Jm',
 }
