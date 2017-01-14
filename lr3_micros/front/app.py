@@ -39,7 +39,7 @@ def personal_view():
         response = requests.get(SESSIONS_SERVICE_URL + 'identify/', headers=clean_hh(request))
         if response.status_code != 200:
             return send_error(request, 403)
-    except ConnectionError:
+    except ConnectionError as e:
         return send_response(request, {'status': 'Session service is down'})
 
     user = response.json()['data']
@@ -49,7 +49,7 @@ def personal_view():
         if response.status_code == 200:
             companies = json.loads(response.text)
             user['companies'] = companies['data']
-    except ConnectionError:
+    except ConnectionError as e:
         user['companies'] = {'error': 'Company service is down'}
 
     try:
@@ -57,7 +57,7 @@ def personal_view():
         if response.status_code == 200:
             routes = json.loads(response.text)
             user['routes'] = routes['data']
-    except ConnectionError:
+    except ConnectionError as e:
         user['routes'] = {'error': 'Routes service is down'}
 
     return send_response(request, {'status': 'OK', 'data': user})
@@ -73,7 +73,7 @@ def register_me(route_id):
         return send_response(request, {'status': 'Session service is down'})
 
     user = response.json()['data']
-    headers = {'X_EMAIL': user}
+    headers = {'X_EMAIL': user['email']}
     try:
         response = requests.post(ROUTE_SERVICE_URL + 'route/%s/register/' % route_id, headers=headers)
         if response.status_code == 200:

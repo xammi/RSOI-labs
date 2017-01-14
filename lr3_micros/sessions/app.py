@@ -138,7 +138,7 @@ def access_token_view():
 
     grant = cursor_to_list(grant)[0]
     token = {
-        'expires_in': datetime.now() + timedelta(seconds=36000),
+        'expires': datetime.now() + timedelta(seconds=36000),
         'access_token': generate_token(),
         'refresh_token': generate_token(),
         'token_type': 'Bearer',
@@ -146,7 +146,7 @@ def access_token_view():
     }
     mongo.db.OAuth2Access.insert(token)
     mongo.db.OAuth2Code.delete_one({'token': code, 'app': app['client_id']})
-    token['expires_in'] = 36000
+    token['expires'] = 36000
     return send_response(request, token)
 
 
@@ -157,7 +157,7 @@ def identify_view():
         return send_error(request, 403)
 
     token = auth_header[7:]
-    grant = mongo.db.OAuth2Access.find({'access_token': token, 'expires_in': {'$gt': datetime.now()}})
+    grant = mongo.db.OAuth2Access.find({'access_token': token, 'expires': {'$gt': datetime.now()}})
     if grant.count() == 0:
         return send_error(request, 403)
 
