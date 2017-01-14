@@ -3,6 +3,7 @@
 Оба сервиса предоставляют соответствующее API, в котором некоторые методы требуют авторизации, а некоторые нет.
 Авторизация по oauth2 и хранение данных пользователей реализованы в третьем сервисе (sessions).
 Для демонстрации работы приложения написано специальное клиентское приложение: lr3_client.py.
+Добавлен агрегирующий сервис front - он проксирует обычные запросы, плюс обрабатывает те запросы, которые требуют агрегации данных нескольких сервисов.
 
 ## Prerequisites
 python3, flask, MongoDB, pymongo
@@ -19,6 +20,7 @@ $ /usr/local/Cellar/mongodb/3.4.0/bin/mongod
 $ python3 ./lr3_micros/companies/app.py
 $ python3 ./lr3_micros/routes/app.py
 $ python3 ./lr3_micros/sessions/app.py
+$ python3 ./lr3_micros/front/app.py
 ```
 
 ### create company
@@ -33,7 +35,7 @@ $ curl -X POST -H "Content-Type: application/json" 'http://127.0.0.1:9093/route/
 $ curl -X GET 'http://127.0.0.1:9093/routes/?size=2&page=1'
 ```
 
-### register user in browser by URL: http://127.0.0.1:9091/register/
+### register user in browser by URL: http://127.0.0.1:9094/register/
 
 ### launch client application
 ```sh
